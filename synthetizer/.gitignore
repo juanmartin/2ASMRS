@@ -1,2 +1,5 @@
-build
-
+cmake-build/
+.vscode/
+external/json/*
+external/JUCE/*
+external/libtorch/*

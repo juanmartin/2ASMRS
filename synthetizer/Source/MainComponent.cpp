@@ -5,7 +5,7 @@ constexpr int DEFAULT_BUFFER_SIZE = 512;
 constexpr int slider_ccnum = 1;
 constexpr int xmax_ccnum = 16;
 constexpr int sclip_ccnum = 17;
-int ix= 0;
+int ix = 0;
 
 //==============================================================================
 MainComponent::MainComponent()
@@ -19,19 +19,21 @@ MainComponent::MainComponent()
     openButton.onClick = [this]
     { openButtonClicked(); };
 
-    // playButton->onClick = [this]
-    // { 
-    //     models[modelSelector]->play(ix, mSliders);
-    //     ix++;
-    //     if (ix>models[modelSelector]->ztrack.size()-1)
-    //         ix=0;
-    // };
+    playButton->onClick = [this]
+    {
+        models[modelSelector]->play(ix, mSliders);
+        ix++;
+        if (ix > models[modelSelector]->ztrack.size() - 1)
+            ix = 0;
+    };
 
     rightArrow->onClick = [this]
-    { 
-        if (models.size() > 0){
+    {
+        if (models.size() > 0)
+        {
             modelSelector = (modelSelector + 1) % (models.size());
-            for (size_t i = 0; i < models[modelSelector]->getInputDepth(); i++){
+            for (size_t i = 0; i < models[modelSelector]->getInputDepth(); i++)
+            {
                 mSliders[i]->setValue(models[modelSelector]->getInputTensorAt(i));
             }
         }
@@ -39,9 +41,11 @@ MainComponent::MainComponent()
 
     leftArrow->onClick = [this]
     {
-        if (models.size() > 0){
+        if (models.size() > 0)
+        {
             modelSelector = (modelSelector - 1) % (models.size());
-            for (size_t i = 0; i < models[modelSelector]->getInputDepth(); i++){
+            for (size_t i = 0; i < models[modelSelector]->getInputDepth(); i++)
+            {
                 mSliders[i]->setValue(models[modelSelector]->getInputTensorAt(i));
             }
         }
@@ -50,7 +54,7 @@ MainComponent::MainComponent()
     addAndMakeVisible(&openButton);
     addAndMakeVisible(rightArrow);
     addAndMakeVisible(leftArrow);
-    // addAndMakeVisible(playButton);
+    addAndMakeVisible(playButton);
 
     // X Max Slider
     xMaxSlider.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
@@ -186,7 +190,7 @@ void MainComponent::resized()
     openButton.setBounds(10, 10, getWidth() / 12, 20);
     rightArrow->setBounds(150, 200, getWidth() / 24, getWidth() / 24);
     leftArrow->setBounds(50, 200, getWidth() / 24, getWidth() / 24);
-    // playButton->setBounds(50, 350, getWidth() / 32, getWidth() / 32);
+    playButton->setBounds(50, 350, getWidth() / 32, getWidth() / 32);
     xMaxSlider.setBounds(0, 60, 100, 100);
     sClipSlider.setBounds(100, 60, 100, 100);
 
@@ -209,7 +213,8 @@ void MainComponent::openButtonClicked()
 
     auto chooserFlags = juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectFiles;
 
-    chooser->launchAsync(chooserFlags, [this](const juce::FileChooser &fc){
+    chooser->launchAsync(chooserFlags, [this](const juce::FileChooser &fc)
+                         {
         
         auto file = fc.getResult();
 
@@ -259,7 +264,6 @@ void MainComponent::createSliders()
 {
     // if (!models[0])
     //     return;
-
 
     for (size_t i = 0; i < models[modelSelector]->getInputDepth(); ++i)
     {
@@ -385,25 +389,6 @@ void MainComponent::handleIncomingMidiMessage(juce::MidiInput *source, const juc
 {
     const juce::ScopedValueSetter<bool> scopedInputFlag(isAddingFromMidiInput, true);
 
-    if (message.isNoteOn())
-    {
-        DBG("[MAINCOMPONENT] Note on: " << message.getNoteNumber());
-        int i = message.getNoteNumber() - 36;
-        for (size_t s = 0; s < mSliders.size(); ++s)
-        {
-            mSliders[s]->setValue(mSlidersMemory[i][s]);
-        }
-        const double mi = xMaxSlider.getMinimum();
-        const double ma = xMaxSlider.getMaximum();
-        const double newValue = juce::jmap<double>(message.getVelocity(), 0, 127, mi, ma);
-        xMaxSlider.setValue(newValue);
-    }
-
-    if (message.isNoteOff())
-    {
-        xMaxSlider.setValue(0);
-    }
-
     if (message.isController())
     {
         const int ccnum = message.getControllerNumber();
@@ -433,17 +418,6 @@ void MainComponent::handleIncomingMidiMessage(juce::MidiInput *source, const juc
             const double ma = mSliders[sliderIndex]->getMaximum();
             const double newValue = juce::jmap<double>(message.getControllerValue(), 0, 127, mi, ma);
             mSliders[sliderIndex]->setValue(newValue);
-        }
-
-        if ((ccnum >= slider_ccnum+64) && (ccnum <= slider_ccnum + mSliders.size()+64))
-        {
-            const juce::MessageManagerLock mmLock;
-            const int sliderIndex = ccnum - slider_ccnum - 64;
-            const double mi = mSliders[sliderIndex]->getMinimum();
-            const double ma = mSliders[sliderIndex]->getMaximum();
-            const double newValue = juce::jmap<double>(message.getControllerValue(), 0, 127, mi/10.0, ma/10.0);
-            const double val = mSliders[sliderIndex]->getValue();
-            mSliders[sliderIndex]->setValue(val + newValue);
         }
     }
 

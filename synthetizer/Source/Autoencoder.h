@@ -35,8 +35,6 @@ struct Parameters
     {
         for (const auto &r : PZRange)
             zRange.push_back({r["min"], r["max"]});
-
-
     }
 
     float xMax;
@@ -69,14 +67,13 @@ private:
 
     Parameters *mParams;
     // Ztrack *ztrack;
-      // Create a vector of vectors to store the data.
+    // Create a vector of vectors to store the data.
 
-  
     float fftArray[FFT_SIZE];
     unsigned int rfftSize;
     unsigned int index;
     unsigned int idxProc;
-    float phaseg=0;
+    float phaseg = 0;
     std::vector<float> mAudio;
 
     juce::Random random;
@@ -106,10 +103,10 @@ public:
 
         auto lists = settings["ztrack"];
 
-        for (auto list : lists) {
+        for (auto list : lists)
+        {
             ztrack.push_back(list);
         }
-
 
         DBG("[AUTOENCODER] Model name: " + settings["model_name"].get<std::string>());
 
@@ -123,9 +120,9 @@ public:
 
             // TODO: check if file exists
             fs::file_status s = fs::file_status{};
-            if(fs::status_known(s) ? fs::exists(s) : !fs::exists(p))
-                std::cerr << p.string() << " File does not exist\n";                
-                
+            if (fs::status_known(s) ? fs::exists(s) : !fs::exists(p))
+                std::cerr << p.string() << " File does not exist\n";
+
             // Deserialize the TorchScript from a file using torch::jit::load().
             mAutoencoder = torch::jit::load(p.string());
 
@@ -137,7 +134,7 @@ public:
             // Execute the model and turn its output into a tensor.
             at::Tensor output = mAutoencoder.forward(mInputTensor).toTensor();
             DBG("[AUTOENCODER] OUTPUT SIZES: " << output.size(1));
-            DBG("[AUTOENCODER] WIN SIZE: " <<  (int)mParams->winLength);
+            DBG("[AUTOENCODER] WIN SIZE: " << (int)mParams->winLength);
 
             rfftSize = output.sizes()[1];
             index = 0;
@@ -148,9 +145,9 @@ public:
             mParams->xMax = 0;
             mParams->sClip = -100;
 
-            for (int i=0;i<FFT_SIZE;i++)
+            for (int i = 0; i < FFT_SIZE; i++)
             {
-                fftArray[i]=0.0;
+                fftArray[i] = 0.0;
             }
         }
         catch (const c10::Error &e)
@@ -167,22 +164,43 @@ public:
     void play(size_t ix, std::vector<juce::Slider *> &mSliders)
     {
         DBG("[AUTOENCODER] Play");
-        // Iterate over ztrack vector and change the slider value with the elements
-        // for (int i = 0; i < ztrack.size(); i++) 
-        // {
-            for (int dim = 0; dim < mParams->latentDim; dim++)
+
+        // Check if ix is within valid range
+        if (ix < ztrack.size())
+        {
+            for (unsigned int dim = 0; dim < mParams->latentDim; dim++)
             {
+                // Extract the value from ztrack
                 const float val = ztrack[ix][dim];
-                mInputTensor[0].toTensor().index_put_({0, (long int) dim}, val);
+
+                // Create an index tensor for the specific dimension
+                std::vector<long> indexData = {0, static_cast<long int>(dim)};
+                at::Tensor indexTensor = torch::from_blob(indexData.data(), {2}, torch::dtype(torch::kLong));
+
+                // Use index_put to update the tensor
+                mInputTensor[0].toTensor().index_put({indexTensor}, torch::tensor(val));
+
                 mSliders[dim]->setValue(val);
             }
-        // }
+        }
+        else
+        {
+            DBG("Invalid ix value");
+        }
     }
 
     void setInputLayers(const size_t pos, const float newValue)
     {
         DBG("[AUTOENCODER] slider: " << pos << " new value: " << newValue);
-        mInputTensor[0].toTensor().index_put_({0, (long int) pos}, newValue);
+
+        // Create an index tensor using size_t
+        std::vector<long> indexData = {0, static_cast<long>(pos)};
+
+        // Create a tensor from the indexData vector
+        at::Tensor indexTensor = torch::from_blob(indexData.data(), {2}, torch::dtype(torch::kLong));
+
+        // Use index_put to update the tensor
+        mInputTensor[0].toTensor().index_put({indexTensor}, torch::tensor(newValue));
     }
 
     size_t getInputDepth() const
@@ -219,13 +237,13 @@ public:
         for (int sample = 0; sample < bufferToFill.numSamples; ++sample)
         {
             bufferToFill.buffer->setSample(0, sample, mAudio[index + sample]);
-            bufferToFill.buffer->setSample(1, sample, mAudio[index + sample]);            
+            bufferToFill.buffer->setSample(1, sample, mAudio[index + sample]);
             mAudio[index + sample] = 0;
         }
 
         index += bufferToFill.numSamples;
-        if (index>=mParams->winLength)
-            index=0;
+        if (index >= mParams->winLength)
+            index = 0;
     }
 
     void calculate(const int bufferToFillSize)
@@ -233,10 +251,10 @@ public:
 
         at::Tensor predictionResult = mAutoencoder.forward(mInputTensor).toTensor();
 
-        for (int i = 0; i < rfftSize; ++i)
+        for (unsigned int i = 0; i < rfftSize; ++i)
         {
-            const float tmp = predictionResult.index({0,i}).item<float>();
-            const float power = (( tmp*mParams->xMax) + mParams->sClip) / 10;
+            const float tmp = predictionResult.index({0, i}).item<float>();
+            const float power = ((tmp * mParams->xMax) + mParams->sClip) / 10;
             float y_aux = std::sqrt(std::pow(10, power));
             float phase = random.nextFloat() * juce::MathConstants<float>::twoPi;
             fftArray[2 * i] = y_aux * std::cos(phase);
@@ -245,9 +263,9 @@ public:
 
         mFFT.performRealOnlyInverseTransform(fftArray);
 
-        for (int i = 0; i < mParams->winLength; ++i)
+        for (unsigned int i = 0; i < mParams->winLength; ++i)
         {
-            // TODO: precalculate cosine window table 
+            // TODO: precalculate cosine window table
             const float multiplier = 0.5f * (1 - std::cos(juce::MathConstants<float>::twoPi * i / (mParams->winLength - 1)));
             const float sample = fftArray[i] * multiplier;
             const int idx = (idxProc + i) % mParams->winLength;
@@ -255,7 +273,7 @@ public:
         }
 
         idxProc += bufferToFillSize;
-        if (idxProc>=mParams->winLength)
-            idxProc=0;
+        if (idxProc >= mParams->winLength)
+            idxProc = 0;
     }
 };

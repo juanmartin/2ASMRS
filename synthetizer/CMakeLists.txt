@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.15)
-set(PROJECT_NAME "2ASMRSynth")
+set(PROJECT_NAME "model_explorer")
 
 set(FORMATS Standalone)
 
@@ -35,7 +35,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS}")
 
 
 juce_add_gui_app("${PROJECT_NAME}"
-    COMPANY_NAME "Pablo Riera"                  # Specify the name of the plugin's author
+    COMPANY_NAME "jaunmatrinn"                  # Specify the name of the plugin's author
     IS_SYNTH TRUE                               # Is this a synth or an effect?
     NEEDS_MIDI_INPUT TRUE                       # Does the plugin need midi input?
     NEEDS_MIDI_OUTPUT FALSE                     # Does the plugin need midi output?
